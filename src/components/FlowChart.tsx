@@ -24,6 +24,29 @@ type NodeDef = {
 
 const NODE_H = 36;
 
+const DESIGN_NOTES = [
+  {
+    n: '01',
+    title: '移除情绪波动询问，Rest 后默认进入 Stroop',
+    body: '不再让用户主观判断「是否有情绪波动」。客观检测流程中插入自评，容易让用户质疑设备为何依赖感受而非信号本身。',
+  },
+  {
+    n: '02',
+    title: '结果页仅展示 Stroop 段 EDA 与 Coherence 段 HR',
+    body: '保守呈现更可能出现、也更易解释的变化：EDA 看挑战阶段，HR 看呼吸阶段。避免展示短窗内难以确认的结论。',
+  },
+  {
+    n: '03',
+    title: '完成体验后不可重试；仅 Skip 用户可从 Home 再进入',
+    body: '结果页不提供「再试一次」。若体验不佳却反复重试仍无改善，容易削弱用户对设备的信任。Skip First Loop 的用户可在 Home 通过入口再次体验。',
+  },
+  {
+    n: '04',
+    title: 'Result 已闭环；Home 不展示本次训练的延迟响应点',
+    body: '训练结束即完成 Detect → Act → Confirm 闭环。首个后台检测时间节点尚未到达，延迟 EDA 等数据此时未必能写入存储，因此 Home 不展示本次训练对应的延迟响应点，避免空态或误导。',
+  },
+];
+
 const NODES: NodeDef[] = [
   { id: 'register', x: 210, y: 32, w: 110, label: 'Register' },
   { id: 'connect', x: 210, y: 100, w: 110, label: 'Connect' },
@@ -33,18 +56,10 @@ const NODES: NodeDef[] = [
   { id: 'home_c', x: 64, y: 316, w: 88, label: 'Home', branch: 'C' },
 
   { id: 'rest', x: 286, y: 244, w: 92, label: 'Rest' },
-  { id: 'emotion', x: 286, y: 316, w: 92, label: 'Emotion' },
-
-  // Path A · 3-phase
-  { id: 'stroop', x: 196, y: 414, w: 88, label: 'Stroop', branch: 'A' },
-  { id: 'coherence', x: 196, y: 490, w: 96, label: 'Breathing', branch: 'A' },
-  { id: 'results', x: 196, y: 566, w: 96, label: 'Results', sub: '3 phases', branch: 'A' },
-  { id: 'home', x: 196, y: 642, w: 96, label: 'Home', branch: 'A' },
-
-  // Path B · 2-phase
-  { id: 'coherence_b', x: 336, y: 490, w: 92, label: 'Breathing', branch: 'B' },
-  { id: 'results_b', x: 336, y: 566, w: 92, label: 'Results', sub: '2 phases', branch: 'B' },
-  { id: 'home_b', x: 336, y: 642, w: 92, label: 'Home', branch: 'B' },
+  { id: 'stroop', x: 286, y: 326, w: 92, label: 'Stroop', branch: 'A' },
+  { id: 'coherence', x: 286, y: 408, w: 96, label: 'Breathing', branch: 'A' },
+  { id: 'results', x: 286, y: 490, w: 96, label: 'Results', sub: 'EDA + HR', branch: 'A' },
+  { id: 'home', x: 286, y: 572, w: 96, label: 'Home', branch: 'A' },
 ];
 
 function getNode(id: ClickableNodeId) {
@@ -168,35 +183,28 @@ export const FlowChart: React.FC<FlowChartProps> = ({
   const skip = getNode('invite_skip');
   const homeC = getNode('home_c');
   const rest = getNode('rest');
-  const emo = getNode('emotion');
   const strA = getNode('stroop');
   const cohA = getNode('coherence');
   const resA = getNode('results');
   const homeA = getNode('home');
-  const cohB = getNode('coherence_b');
-  const resB = getNode('results_b');
-  const homeB = getNode('home_b');
-
-  const forkY = emo.y + 46;
-  const dimA = activePath === 'B' || activePath === 'C';
-  const dimB = activePath === 'A' || activePath === 'C';
+  const dimA = activePath === 'C';
 
   const top = (n: NodeDef) => n.y - NODE_H / 2;
   const bottom = (n: NodeDef) => n.y + NODE_H / 2;
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-4">
+    <div className="flex flex-col h-full min-h-0 gap-3 overflow-y-auto">
       <div className="shrink-0">
         <h2 className="text-[15px] font-semibold text-slate-800 tracking-tight">Experience flow</h2>
         <p className="text-xs text-slate-400 mt-1">Click a node to jump to that step</p>
       </div>
 
-      <div className="flex-1 min-h-0 rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50/80 p-4 shadow-sm flex items-center justify-center overflow-hidden">
+      <div className="shrink-0 rounded-2xl border border-slate-100 bg-gradient-to-b from-white to-slate-50/80 p-4 shadow-sm">
         <svg
-          viewBox="0 0 400 700"
+          viewBox="0 0 400 630"
           preserveAspectRatio="xMidYMid meet"
-          className="w-full h-full"
-          style={{ minHeight: 520, maxHeight: 'calc(100vh - 120px)' }}
+          className="w-full"
+          style={{ minHeight: 420, maxHeight: '52vh' }}
         >
           {/* Onboarding spine */}
           {line(reg.x, bottom(reg), con.x, top(con))}
@@ -213,26 +221,12 @@ export const FlowChart: React.FC<FlowChartProps> = ({
           )}
           {line(skip.x, bottom(skip), homeC.x, top(homeC), activePath === 'A' || activePath === 'B')}
 
-          {line(rest.x, bottom(rest), emo.x, top(emo), activePath === 'C')}
-
-          {/* Emotion fork → two independent branches */}
-          {path(
-            `M ${emo.x - 26} ${bottom(emo)} L ${emo.x - 26} ${forkY} L ${strA.x} ${forkY} L ${strA.x} ${top(strA)}`,
-            dimA
-          )}
-          {path(
-            `M ${emo.x + 26} ${bottom(emo)} L ${emo.x + 26} ${forkY} L ${cohB.x} ${forkY} L ${cohB.x} ${top(cohB)}`,
-            dimB
-          )}
+          {line(rest.x, bottom(rest), strA.x, top(strA), activePath === 'C')}
 
           {/* Path A column */}
           {line(strA.x, bottom(strA), cohA.x, top(cohA), dimA)}
           {line(cohA.x, bottom(cohA), resA.x, top(resA), dimA)}
           {line(resA.x, bottom(resA), homeA.x, top(homeA), dimA)}
-
-          {/* Path B column */}
-          {line(cohB.x, bottom(cohB), resB.x, top(resB), dimB)}
-          {line(resB.x, bottom(resB), homeB.x, top(homeB), dimB)}
 
           {/* Invite fork labels */}
           <text x={96} y={218} fontSize={10} fill="#94a3b8" fontFamily="Inter, sans-serif">
@@ -242,54 +236,30 @@ export const FlowChart: React.FC<FlowChartProps> = ({
             Continue
           </text>
 
-          {/* Emotion fork labels */}
-          <text
-            x={strA.x}
-            y={forkY - 8}
-            textAnchor="middle"
-            fontSize={10}
-            fill="#64748b"
-            fontWeight={600}
-            fontFamily="Inter, sans-serif"
-          >
-            No shift
-          </text>
-          <text
-            x={cohB.x}
-            y={forkY - 8}
-            textAnchor="middle"
-            fontSize={10}
-            fill="#64748b"
-            fontWeight={600}
-            fontFamily="Inter, sans-serif"
-          >
-            Has shift
-          </text>
-
-          {/* Branch headers */}
-          <text
-            x={strA.x}
-            y={top(strA) - 12}
-            textAnchor="middle"
-            fontSize={9}
-            fill="#94a3b8"
-            fontFamily="Inter, sans-serif"
-          >
-            Path A · 3-phase
-          </text>
-          <text
-            x={cohB.x}
-            y={top(cohB) - 12}
-            textAnchor="middle"
-            fontSize={9}
-            fill="#94a3b8"
-            fontFamily="Inter, sans-serif"
-          >
-            Path B · 2-phase
-          </text>
-
           {NODES.map(renderNode)}
         </svg>
+      </div>
+
+      <div className="shrink-0 pb-1 space-y-2">
+        <p className="text-[10px] font-semibold tracking-[0.06em] text-slate-400 uppercase px-0.5">
+          设计说明
+        </p>
+        {DESIGN_NOTES.map((note) => (
+          <div
+            key={note.n}
+            className="rounded-xl border border-slate-100 bg-white px-3.5 py-3 shadow-sm"
+          >
+            <div className="flex gap-2.5">
+              <span className="text-[10px] font-bold text-blue-600 tabular-nums shrink-0 pt-0.5">
+                {note.n}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-800 leading-snug">{note.title}</p>
+                <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">{note.body}</p>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

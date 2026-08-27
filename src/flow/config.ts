@@ -5,7 +5,6 @@ export type FlowStepId =
   | 'connect'
   | 'invite'
   | 'rest'
-  | 'emotion'
   | 'stroop'
   | 'coherence'
   | 'results'
@@ -26,10 +25,9 @@ export const FLOW_NODES: FlowNode[] = [
   { id: 'connect', label: 'Put on your ring', shortLabel: 'Connect', paths: ['A', 'B', 'C'] },
   { id: 'invite', label: 'First Loop invite', shortLabel: 'Invite', paths: ['A', 'B', 'C'] },
   { id: 'rest', label: 'Rest baseline', shortLabel: 'Rest 30s', duration: '30s', paths: ['A', 'B'] },
-  { id: 'emotion', label: 'Subjective emotional shift', shortLabel: 'Emotion', paths: ['A', 'B'] },
   { id: 'stroop', label: 'Stroop reaction challenge', shortLabel: 'Stroop', duration: '50s', paths: ['A'] },
-  { id: 'coherence', label: 'Coherence breathing training', shortLabel: 'Breathing', duration: '30s', paths: ['A', 'B'] },
-  { id: 'results', label: 'Before / during / after comparison', shortLabel: 'Results', paths: ['A', 'B'] },
+  { id: 'coherence', label: 'Coherence breathing training', shortLabel: 'Breathing', duration: '30s', paths: ['A'] },
+  { id: 'results', label: 'EDA change + HR rhythm', shortLabel: 'Results', paths: ['A'] },
   { id: 'home', label: 'Go to Home', shortLabel: 'Home', paths: ['A', 'B', 'C'] },
 ];
 
@@ -41,13 +39,13 @@ export const PATH_META: Record<
     title: 'Path A',
     subtitle: 'Full Detect → Act → Confirm',
     duration: '~4 min',
-    description: 'No emotional shift → Stroop stress → breathing recovery → results',
+    description: 'Rest → Stroop (EDA) → breathing (HR rhythm) → results',
   },
   B: {
     title: 'Path B',
     subtitle: 'Detect → Act → Confirm',
     duration: '~3.5 min',
-    description: 'Emotional shift → skip Stroop → breathing recovery → results',
+    description: 'Retired path',
   },
   C: {
     title: 'Path C',
@@ -60,9 +58,9 @@ export const PATH_META: Record<
 export function getStepsForPath(path: FlowPath): FlowStepId[] {
   switch (path) {
     case 'A':
-      return ['register', 'connect', 'invite', 'rest', 'emotion', 'stroop', 'coherence', 'results', 'home'];
+      return ['register', 'connect', 'invite', 'rest', 'stroop', 'coherence', 'results', 'home'];
     case 'B':
-      return ['register', 'connect', 'invite', 'rest', 'emotion', 'coherence', 'results', 'home'];
+      return ['register', 'connect', 'invite', 'rest', 'stroop', 'coherence', 'results', 'home'];
     case 'C':
       return ['register', 'connect', 'invite', 'home'];
   }
@@ -75,6 +73,3 @@ export function getNextStep(path: FlowPath, current: FlowStepId): FlowStepId | n
   return steps[idx + 1];
 }
 
-export function resolvePathAfterEmotion(hasEmotion: boolean): 'A' | 'B' {
-  return hasEmotion ? 'B' : 'A';
-}

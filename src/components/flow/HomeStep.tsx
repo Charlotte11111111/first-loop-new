@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 
 interface HomeStepProps {
   skippedFlow: boolean;
@@ -22,7 +22,7 @@ export const HomeStep: React.FC<HomeStepProps> = ({
       <div className="mx-4 mb-3 px-3 py-2.5 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center space-x-2">
         <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
         <p className="text-[10px] text-emerald-700 leading-snug">
-          First Loop complete · Initial baseline saved. Check Home later for delayed EDA response.
+          First Loop complete · Baseline and first signals saved. Wear continues the learning.
         </p>
       </div>
     )}
@@ -34,26 +34,22 @@ export const HomeStep: React.FC<HomeStepProps> = ({
       </p>
     </div>
 
+    {skippedFlow && (
+      <button
+        type="button"
+        onClick={onStartFirstLoop}
+        className="mx-4 mb-3 px-3.5 py-2.5 rounded-xl bg-slate-900 text-white flex items-center justify-between gap-2 cursor-pointer active:scale-[0.99] transition-transform"
+      >
+        <span className="text-[12px] font-medium">Try a first experience</span>
+        <ArrowRight className="w-4 h-4 shrink-0 opacity-80" />
+      </button>
+    )}
+
     <div className="mx-4 mb-4 p-4 bg-white rounded-2xl border border-dashed border-slate-200">
       <div className="flex items-center justify-between gap-2 mb-2">
         <p className="text-[10px] font-semibold tracking-[0.06em] text-slate-400 uppercase">
           Energy Budget
         </p>
-        {(skippedFlow || completedFlow) && (
-          <button
-            type="button"
-            onClick={onStartFirstLoop}
-            className="relative flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full bg-slate-900 text-white cursor-pointer active:scale-[0.97] transition-transform shrink-0"
-            aria-label={completedFlow ? 'Try again' : 'First experience'}
-          >
-            <span className="w-4 h-4 rounded-full bg-blue-500 text-[8px] leading-none flex items-center justify-center">
-              ✦
-            </span>
-            <span className="text-[9px] font-semibold whitespace-nowrap">
-              {completedFlow ? 'Try again' : 'First experience'}
-            </span>
-          </button>
-        )}
       </div>
       <div className="h-28 rounded-xl bg-slate-50 flex items-center justify-center px-6">
         <p className="text-[11px] text-slate-400 text-center leading-relaxed">
@@ -69,7 +65,7 @@ export const HomeStep: React.FC<HomeStepProps> = ({
       <div className="h-24 bg-slate-50 rounded-xl flex items-center justify-center">
         <p className="text-[10px] text-slate-400 px-4 text-center">
           {completedFlow
-            ? 'Delayed EDA response will keep updating…'
+            ? 'Your first signals are saved. Patterns will grow with continued wear.'
             : 'Complete First Loop to unlock more insights'}
         </p>
       </div>

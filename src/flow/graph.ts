@@ -25,8 +25,7 @@ export const PREVIOUS_STEP: Partial<Record<FlowStepId, FlowStepId>> = {
   connect: 'register',
   invite: 'connect',
   rest: 'invite',
-  emotion: 'rest',
-  stroop: 'emotion',
+  stroop: 'rest',
   coherence: 'stroop',
   results: 'coherence',
   home: 'results',
@@ -39,7 +38,7 @@ export function resolveBackStep(
 ): FlowStepId | null {
   if (current === 'register' || current === 'connect') return null;
   if (current === 'home') return skippedFlow ? null : 'results';
-  if (current === 'coherence') return hadStroop ? 'stroop' : 'emotion';
+  if (current === 'coherence') return 'stroop';
   return PREVIOUS_STEP[current] ?? null;
 }
 
@@ -80,7 +79,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         activePath: 'C',
         hadStroop: false,
         skippedFlow: true,
-        skippedSteps: ['rest', 'emotion', 'stroop', 'coherence', 'results'],
+        skippedSteps: ['rest', 'stroop', 'coherence', 'results'],
         completedSteps: onboarding,
       };
     case 'rest':
@@ -92,17 +91,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         skippedSteps: [],
         completedSteps: onboarding,
       };
-    case 'emotion':
-      return {
-        step: 'emotion',
-        activePath: null,
-        hadStroop: false,
-        skippedFlow: false,
-        skippedSteps: [],
-        completedSteps: [...onboarding, 'rest'],
-      };
-
-    // ---- Path A (no emotional shift → Stroop, 3-phase results) ----
+    // ---- Main path (Rest → Stroop → Breathing → Results) ----
     case 'stroop':
       return {
         step: 'stroop',
@@ -110,7 +99,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: true,
         skippedFlow: false,
         skippedSteps: [],
-        completedSteps: [...onboarding, 'rest', 'emotion'],
+        completedSteps: [...onboarding, 'rest'],
       };
     case 'coherence':
       return {
@@ -119,7 +108,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: true,
         skippedFlow: false,
         skippedSteps: [],
-        completedSteps: [...onboarding, 'rest', 'emotion', 'stroop'],
+        completedSteps: [...onboarding, 'rest', 'stroop'],
       };
     case 'results':
       return {
@@ -128,7 +117,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: true,
         skippedFlow: false,
         skippedSteps: [],
-        completedSteps: [...onboarding, 'rest', 'emotion', 'stroop', 'coherence'],
+        completedSteps: [...onboarding, 'rest', 'stroop', 'coherence'],
       };
     case 'home':
       return {
@@ -137,7 +126,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: true,
         skippedFlow: false,
         skippedSteps: [],
-        completedSteps: [...onboarding, 'rest', 'emotion', 'stroop', 'coherence', 'results'],
+        completedSteps: [...onboarding, 'rest', 'stroop', 'coherence', 'results'],
       };
 
     // ---- Path B (emotional shift → straight to breathing, 2-phase results) ----
@@ -148,7 +137,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: false,
         skippedFlow: false,
         skippedSteps: ['stroop'],
-        completedSteps: [...onboarding, 'rest', 'emotion'],
+        completedSteps: [...onboarding, 'rest'],
       };
     case 'results_b':
       return {
@@ -157,7 +146,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: false,
         skippedFlow: false,
         skippedSteps: ['stroop'],
-        completedSteps: [...onboarding, 'rest', 'emotion', 'coherence'],
+        completedSteps: [...onboarding, 'rest', 'coherence'],
       };
     case 'home_b':
       return {
@@ -166,7 +155,7 @@ export function getDemoContextForStep(step: ClickableNodeId): {
         hadStroop: false,
         skippedFlow: false,
         skippedSteps: ['stroop'],
-        completedSteps: [...onboarding, 'rest', 'emotion', 'coherence', 'results'],
+        completedSteps: [...onboarding, 'rest', 'coherence', 'results'],
       };
 
     default:

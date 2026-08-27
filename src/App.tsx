@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Activity, RotateCcw, Bell } from 'lucide-react';
-import { FlowPath, FlowStepId, resolvePathAfterEmotion } from './flow/config';
+import { FlowPath, FlowStepId } from './flow/config';
 import { ClickableNodeId, getDemoContextForStep, resolveBackStep } from './flow/graph';
 import { FlowChart } from './components/FlowChart';
 import { FlowDemoFrame } from './components/FlowDemoFrame';
 import { ConnectStep } from './components/flow/ConnectStep';
 import { InviteStep } from './components/flow/InviteStep';
 import { RestStep } from './components/flow/RestStep';
-import { EmotionStep } from './components/flow/EmotionStep';
 import { StroopStep } from './components/flow/StroopStep';
 import { CoherenceStep } from './components/flow/CoherenceStep';
 import { FlowResultsStep } from './components/flow/FlowResultsStep';
@@ -18,7 +17,6 @@ const STEP_TITLES: Record<FlowStepId, string> = {
   connect: 'Energy OS',
   invite: 'First Loop',
   rest: 'Rest baseline',
-  emotion: 'Emotion check-in',
   stroop: 'Stroop challenge',
   coherence: 'Breathing training',
   results: 'Results',
@@ -103,19 +101,11 @@ export default function App() {
 
   const handleRestComplete = () => {
     markComplete('rest');
-    setCurrentStep('emotion');
+    setActivePath('A');
+    setHadStroop(true);
+    setCurrentStep('stroop');
     bumpFlow();
-  };
-
-  const handleEmotionSelect = (hasEmotion: boolean) => {
-    const path = resolvePathAfterEmotion(hasEmotion);
-    setActivePath(path);
-    setHadStroop(!hasEmotion);
-    if (hasEmotion) setSkippedSteps((p) => [...new Set([...p, 'stroop'])]);
-    else setSkippedSteps((p) => p.filter((s) => s !== 'stroop'));
-    markComplete('emotion');
-    setCurrentStep(hasEmotion ? 'coherence' : 'stroop');
-    bumpFlow();
+    showToast('Rest detected · Next: Stroop challenge');
   };
 
   const handleStroopComplete = () => {
@@ -147,10 +137,6 @@ export default function App() {
     showToast('First Loop invite');
   };
 
-  const handleRetryExperience = () => {
-    handleStartFirstLoop();
-  };
-
   const handleReset = () => {
     applyContext(getDemoContextForStep('connect'));
     showToast('Flow reset');
@@ -170,8 +156,6 @@ export default function App() {
         return <InviteStep onAccept={handleInviteAccept} onSkip={handleInviteSkip} />;
       case 'rest':
         return <RestStep key={`rest-${flowKey}`} onComplete={handleRestComplete} />;
-      case 'emotion':
-        return <EmotionStep onSelect={handleEmotionSelect} />;
       case 'stroop':
         return <StroopStep key={`stroop-${flowKey}`} onComplete={handleStroopComplete} />;
       case 'coherence':
@@ -182,7 +166,6 @@ export default function App() {
             key={`res-${flowKey}`}
             hadStroop={hadStroop}
             onContinue={handleResultsContinue}
-            onRetry={handleRetryExperience}
           />
         );
       case 'home':

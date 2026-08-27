@@ -41,6 +41,7 @@ export function generateCalibrationData(
         eda = peakEda - (peakEda - 2.2) * sigmoid + Math.sin(t) * 0.02;
       }
     } else if (edaQuality === 'plateau') {
+      // Mild / limited EDA change within Rest → Stroop window
       if (isTwoPhase) {
         if (t <= 30) {
           eda = 4.6 + 0.06 * Math.sin(t / 4) + Math.sin(t) * 0.02;
@@ -50,12 +51,13 @@ export function generateCalibrationData(
       } else if (t <= 30) {
         eda = 2.6 + 0.05 * Math.sin(t / 4) + Math.sin(t) * 0.02;
       } else if (t <= 75) {
-        const sigmoid = 1 / (1 + Math.exp(-(t - 42) / 4.5));
-        eda = 2.6 + (6.8 - 2.6) * sigmoid + Math.sin(t) * 0.03;
+        const sigmoid = 1 / (1 + Math.exp(-(t - 48) / 6));
+        eda = 2.6 + (4.0 - 2.6) * sigmoid + Math.sin(t) * 0.02;
       } else {
-        eda = 6.5 + 0.08 * Math.sin(t / 6) + Math.sin(t * 1.1) * 0.025;
+        eda = 4.0 + 0.06 * Math.sin(t / 6) + Math.sin(t * 1.1) * 0.02;
       }
     } else if (edaQuality === 'rising') {
+      // Strong EDA climb within Rest → Stroop window
       if (isTwoPhase) {
         if (t <= 30) {
           eda = 4.6 + 0.06 * Math.sin(t / 4) + Math.sin(t) * 0.02;
@@ -66,12 +68,27 @@ export function generateCalibrationData(
       } else if (t <= 30) {
         eda = 2.6 + 0.05 * Math.sin(t / 4) + Math.sin(t) * 0.02;
       } else if (t <= 75) {
-        const sigmoid = 1 / (1 + Math.exp(-(t - 42) / 4.5));
-        eda = 2.6 + (6.8 - 2.6) * sigmoid + Math.sin(t) * 0.03;
+        const sigmoid = 1 / (1 + Math.exp(-(t - 40) / 4));
+        eda = 2.6 + (8.4 - 2.6) * sigmoid + Math.sin(t) * 0.04;
       } else {
-        const peakEda = 2.6 + (6.8 - 2.6) * (1 / (1 + Math.exp(-(75 - 42) / 4.5)));
-        const sigmoid = 1 / (1 + Math.exp(-(t - 95) / 8));
-        eda = peakEda + (8.2 - peakEda) * sigmoid + Math.sin(t) * 0.03;
+        eda = 8.2 + 0.1 * Math.sin(t / 5) + Math.sin(t) * 0.03;
+      }
+    } else if (edaQuality === 'declining') {
+      // EDA dips during Rest → Stroop window
+      if (isTwoPhase) {
+        if (t <= 30) {
+          eda = 4.6 + 0.06 * Math.sin(t / 4) + Math.sin(t) * 0.02;
+        } else {
+          const sigmoid = 1 / (1 + Math.exp(-(t - 45) / 5));
+          eda = 4.6 - (4.6 - 3.4) * sigmoid + Math.sin(t) * 0.02;
+        }
+      } else if (t <= 30) {
+        eda = 2.6 + 0.05 * Math.sin(t / 4) + Math.sin(t) * 0.02;
+      } else if (t <= 75) {
+        const sigmoid = 1 / (1 + Math.exp(-(t - 42) / 5));
+        eda = 2.6 - (2.6 - 1.9) * sigmoid + Math.sin(t) * 0.02;
+      } else {
+        eda = 1.9 + 0.04 * Math.sin(t / 5) + Math.sin(t) * 0.015;
       }
     } else if (edaQuality === 'flat') {
       const baseEda = isTwoPhase ? 4.6 : 2.6;

@@ -2,7 +2,7 @@ export type CalibrationState = 'positive' | 'neutral' | 'negative';
 
 export type PhaseMode = '3phase' | '2phase';
 
-export type SignalQuality = 'normal' | 'flat' | 'abnormal' | 'rising' | 'plateau';
+export type SignalQuality = 'normal' | 'flat' | 'abnormal' | 'rising' | 'plateau' | 'declining';
 
 export interface OutcomeCopy {
   state: CalibrationState;

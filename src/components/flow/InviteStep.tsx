@@ -16,14 +16,14 @@ export const InviteStep: React.FC<InviteStepProps> = ({ onAccept, onSkip }) => (
         Join a First Loop test experience?
       </h2>
       <p className="text-sm text-slate-500 leading-relaxed mb-8 max-w-[290px]">
-        About 3–4 minutes to see how your ring reads your body — and how a short recovery session can
+        About 3 minutes to see how your ring reads your body — and how a short recovery session can
         change how you feel.
       </p>
 
       <div className="w-full space-y-3 max-w-[300px] text-left">
         <div className="px-3.5 py-3 rounded-xl bg-white border border-slate-100 text-[12px] text-slate-600 leading-relaxed">
-          We will guide you through rest baseline, a brief challenge if needed, and breathing
-          recovery — then show your before / after signals.
+          We will guide you through rest baseline, a brief challenge, and breathing recovery — then
+          show your before / after signals.
         </div>
       </div>
 

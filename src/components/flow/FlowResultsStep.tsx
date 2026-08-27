@@ -12,14 +12,13 @@ import {
 interface FlowResultsStepProps {
   hadStroop: boolean;
   onContinue: () => void;
-  onRetry: () => void;
 }
 
-export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({ hadStroop, onContinue, onRetry }) => {
+export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({ hadStroop, onContinue }) => {
   const phaseMode: PhaseMode = hadStroop ? '3phase' : '2phase';
   const tabs = useMemo(() => getResultTabs(phaseMode), [phaseMode]);
 
-  const [activeTabId, setActiveTabId] = useState<ResultTabId>('positive');
+  const [activeTabId, setActiveTabId] = useState<ResultTabId>('hr_rhythm');
   const [variantId, setVariantId] = useState('');
   const [hoveredTime, setHoveredTime] = useState<number | null>(null);
 
@@ -62,16 +61,11 @@ export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({ hadStroop, onC
     setVariantId(tab?.variants[0]?.id ?? '');
   };
 
-  const primaryIsRetry =
-    variant.primaryButtonText === 'Try Again' || variant.primaryButtonText === 'Retry';
-
   return (
     <div className="pb-6">
       <div className="mx-4 mt-2 px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-100">
         <p className="text-[9px] text-slate-500 leading-snug">
-          {hadStroop
-            ? 'Path A · 3-phase: Rest → Stroop → Breathing'
-            : 'Path B · 2-phase: Elevated baseline → Breathing (skip Stroop)'}
+          EDA: Rest → Stroop · HR: Rest → Coherence
         </p>
       </div>
 
@@ -135,26 +129,12 @@ export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({ hadStroop, onC
         <p className="text-[11px] text-slate-500 leading-relaxed text-left mb-4">{variant.body}</p>
         <button
           type="button"
-          onClick={primaryIsRetry ? onRetry : onContinue}
+          onClick={onContinue}
           className={`w-full py-2.5 rounded-xl text-xs font-semibold text-white cursor-pointer active:scale-[0.98] transition-all
             ${state === 'positive' ? 'bg-emerald-600 hover:bg-emerald-700' : state === 'negative' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-slate-800 hover:bg-slate-900'}`}
         >
           {variant.primaryButtonText}
         </button>
-        {variant.secondaryButtonText && (
-          <button
-            type="button"
-            onClick={
-              variant.secondaryButtonText === 'Try Again' ||
-              variant.secondaryButtonText === 'Retry'
-                ? onRetry
-                : onContinue
-            }
-            className="w-full mt-2 py-2 text-[11px] text-slate-400 hover:text-slate-600 cursor-pointer"
-          >
-            {variant.secondaryButtonText}
-          </button>
-        )}
       </div>
     </div>
   );

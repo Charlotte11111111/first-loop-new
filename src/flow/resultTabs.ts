@@ -1,7 +1,20 @@
 import { CalibrationState, PhaseMode, SignalProfile } from '../types';
 
-/** Four result tabs: Positive | Unchanged (EDA) | Negative (EDA) | Other */
-export type ResultTabId = 'positive' | 'unchanged_eda' | 'negative_eda' | 'other';
+/**
+ * Result cases (Stroop版):
+ *
+ * HR rhythm OK:
+ *   - EDA↑ + HR rhythm
+ *   - EDA flat + HR rhythm
+ *   - EDA↓ + HR rhythm
+ *
+ * Wearing / fit issue:
+ *   - EDA & HR both flat, or both noisy
+ *
+ * No HR rhythm (breathing not followed):
+ *   - EDA↑ / flat / ↓ each with its own explanation
+ */
+export type ResultTabId = 'hr_rhythm' | 'wearing' | 'no_hr_rhythm';
 
 export interface ResultVariant {
   id: string;
@@ -11,7 +24,6 @@ export interface ResultVariant {
   title: string;
   body: string;
   primaryButtonText: string;
-  secondaryButtonText?: string;
 }
 
 export interface ResultTabConfig {
@@ -21,153 +33,107 @@ export interface ResultTabConfig {
   variants: ResultVariant[];
 }
 
-const POSITIVE_COPY = {
-  '3phase': {
-    title: 'Your body responded clearly',
-    body: 'Skin conductance rose during the Stroop task and began to fall after recovery training. Heart rate held a steady rhythm throughout breathing. We captured both stress and recovery across three phases.',
-    primaryButtonText: 'Enter Home',
-  },
-  '2phase': {
-    title: 'Your body settled after breathing',
-    body: 'You reported an emotional shift, so we treated your EDA as already elevated. After breathing training, skin conductance began to fall — a clear recovery from an activated state.',
-    primaryButtonText: 'Enter Home',
-  },
-};
-
-const UNCHANGED_EDA_COPY = {
-  '3phase': {
-    title: 'Stress detected, recovery still in progress',
-    body: 'Skin conductance rose during Stroop and heart rate kept a steady rhythm during breathing — but EDA has not clearly fallen yet within this window. That does not mean coherence training failed; EDA recovery often takes longer. Delayed changes may show up on Home later.',
-    primaryButtonText: 'Enter Home',
-    secondaryButtonText: 'Try Again',
-  },
-  '2phase': {
-    title: 'Still elevated — not yet down',
-    body: 'You started from an activated state. Heart rate may have shown rhythm during breathing, but skin conductance stayed high and did not clearly fall in this window. Delayed EDA recovery may still appear on Home later.',
-    primaryButtonText: 'Enter Home',
-    secondaryButtonText: 'Try Again',
-  },
-};
-
-const NEGATIVE_EDA_COPY = {
-  '3phase': {
-    title: 'Skin conductance is still elevated',
-    body: 'Skin conductance rose during Stroop but continued to climb after recovery training — your body may still be activated. You can enter Home to watch for later changes, or try again when you feel more settled.',
-    primaryButtonText: 'Enter Home',
-    secondaryButtonText: 'Try Again',
-  },
-  '2phase': {
-    title: 'Still climbing after breathing',
-    body: 'You started activated, and skin conductance did not fall during breathing — it stayed high or kept rising. You can enter Home to watch for later changes, or try again when you feel more settled.',
-    primaryButtonText: 'Enter Home',
-    secondaryButtonText: 'Try Again',
-  },
-};
-
-function otherVariants(phase: PhaseMode): ResultVariant[] {
-  const byId: Record<string, ResultVariant> = {
-    other_flat: {
-      id: 'other_flat',
-      label: 'No EDA & HR',
-      phases: ['3phase', '2phase'],
-      signal: { edaQuality: 'flat', hrQuality: 'flat' },
-      title: phase === '2phase' ? 'No clear recovery this time' : 'Signals were quiet this time',
-      body:
-        phase === '2phase'
-          ? 'You started activated, but we did not see a clear EDA decline or HR rhythm during breathing. Your baseline is saved; continued wear will improve readings.'
-          : 'We did not see a clear stress or recovery pattern in this session — you may have already been relaxed, or your body needs more time to respond. Your first baseline is saved; continued wear will improve readings.',
-      primaryButtonText: 'Enter Home',
-      secondaryButtonText: 'Try Again',
-    },
-    other_no_eda: {
-      id: 'other_no_eda',
-      label: 'No EDA',
-      phases: ['3phase'],
-      signal: { edaQuality: 'flat', hrQuality: 'normal' },
-      title: 'No stress rise during Stroop',
-      body: 'Heart rate held a steady rhythm during breathing, but skin conductance did not rise during the Stroop task — the challenge may not have triggered a clear stress response. Your baseline and breathing rhythm are saved; you can try again or continue on Home.',
-      primaryButtonText: 'Enter Home',
-      secondaryButtonText: 'Try Again',
-    },
-    other_no_hr: {
-      id: 'other_no_hr',
-      label: 'No HR',
-      phases: ['3phase', '2phase'],
-      signal: { edaQuality: 'normal', hrQuality: 'flat' },
-      title: 'Skin conductance fell, no breathing rhythm',
-      body: 'Skin conductance came down after training, but heart rate never settled into a clear rhythm. Make sure you follow the breathing pace and stay still — that will make the recovery signal even stronger next time.',
-      primaryButtonText: 'Enter Home',
-      secondaryButtonText: 'Try Again',
-    },
-    other_interference: {
-      id: 'other_interference',
-      label: 'Interference',
-      phases: ['3phase', '2phase'],
-      signal: { edaQuality: 'abnormal', hrQuality: 'abnormal' },
-      title: 'Could not confirm results',
-      body: 'We could not reliably read your body response — this may be due to movement, fit, or environment. Keep the ring snug, stay still, and try again. You can also enter Home and we will keep observing.',
-      primaryButtonText: 'Try Again',
-      secondaryButtonText: 'Enter Home',
-    },
-  };
-
-  const order = ['other_flat', 'other_no_eda', 'other_no_hr', 'other_interference'];
-  return order
-    .map((id) => byId[id])
-    .filter((v) => v.phases.includes(phase));
-}
-
 export function getResultTabs(phase: PhaseMode): ResultTabConfig[] {
-  return [
+  const tabs: ResultTabConfig[] = [
     {
-      id: 'positive',
-      label: 'Positive',
+      id: 'hr_rhythm',
+      label: 'HR rhythm',
       state: 'positive',
       variants: [
         {
-          id: 'positive_full',
-          label: 'Full response',
+          id: 'hr_ok_eda_rise',
+          label: 'EDA↑',
           phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'normal', hrQuality: 'normal' },
-          ...POSITIVE_COPY[phase],
+          signal: { edaQuality: 'rising', hrQuality: 'normal' },
+          title: 'Both signals clear',
+          body: 'EDA rose during Stroop — mental effort often does that. Heart rate followed the breathing pace. Keep wearing the ring so it keeps learning.',
+          primaryButtonText: 'Enter Home',
         },
-      ],
-    },
-    {
-      id: 'unchanged_eda',
-      label: 'Unchanged',
-      state: 'neutral',
-      variants: [
         {
-          id: 'unchanged_eda_plateau',
-          label: 'EDA not yet down',
+          id: 'hr_ok_eda_flat',
+          label: 'EDA flat',
           phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'plateau', hrQuality: 'normal' },
-          ...UNCHANGED_EDA_COPY[phase],
+          signal: { edaQuality: 'flat', hrQuality: 'normal' },
+          title: 'HR clear · EDA flat',
+          body: 'Heart rate followed the breathing pace. EDA stayed flat during Stroop — that is common; it changes slowly and varies by person. Keep wearing the ring.',
+          primaryButtonText: 'Enter Home',
+        },
+        {
+          id: 'hr_ok_eda_down',
+          label: 'EDA↓',
+          phases: ['3phase'],
+          signal: { edaQuality: 'declining', hrQuality: 'normal' },
+          title: 'HR clear · EDA dipped',
+          body: 'Heart rate followed the breathing pace. EDA dipped slightly during Stroop — bodies respond differently in a short session. Keep wearing the ring.',
+          primaryButtonText: 'Enter Home',
         },
       ],
     },
     {
-      id: 'negative_eda',
-      label: 'Negative',
+      id: 'wearing',
+      label: 'Wearing',
       state: 'negative',
       variants: [
         {
-          id: 'negative_eda_rising',
-          label: 'EDA still rising',
+          id: 'wear_flat_both',
+          label: 'Both flat',
           phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'rising', hrQuality: 'normal' },
-          ...NEGATIVE_EDA_COPY[phase],
+          signal: { edaQuality: 'flat', hrQuality: 'flat' },
+          title: 'Flat signals — check fit',
+          body: 'No clear EDA or HR pattern. The ring may have been loose, you may have moved too much, or the session was too short. Wear it snugly day to day — readings improve over time.',
+          primaryButtonText: 'Enter Home',
+        },
+        {
+          id: 'wear_noisy',
+          label: 'Noisy',
+          phases: ['3phase', '2phase'],
+          signal: { edaQuality: 'abnormal', hrQuality: 'abnormal' },
+          title: 'Noisy signals — check fit',
+          body: 'EDA and HR were too noisy to read — often from movement, a loose fit, or the environment. This is about wearing, not your body. Keep wearing it snugly.',
+          primaryButtonText: 'Enter Home',
         },
       ],
     },
     {
-      id: 'other',
-      label: 'Other',
+      id: 'no_hr_rhythm',
+      label: 'No HR rhythm',
       state: 'neutral',
-      variants: otherVariants(phase),
+      variants: [
+        {
+          id: 'no_hr_eda_rise',
+          label: 'EDA↑',
+          phases: ['3phase'],
+          signal: { edaQuality: 'rising', hrQuality: 'flat' },
+          title: 'EDA rose · no HR rhythm',
+          body: 'EDA rose during Stroop — we caught that change. Heart rate did not follow the breathing pace, likely because the training was not done correctly. Similar training will appear in the app — next time, please follow the guide. Keep wearing the ring.',
+          primaryButtonText: 'Enter Home',
+        },
+        {
+          id: 'no_hr_eda_flat',
+          label: 'EDA flat',
+          phases: ['3phase'],
+          signal: { edaQuality: 'flat', hrQuality: 'flat' },
+          title: 'No HR rhythm · EDA flat',
+          body: 'Heart rate did not follow the breathing pace — usually the training was not done correctly. EDA stayed flat during Stroop; that varies by person. Similar training will appear in the app — next time, please follow the guide. Keep wearing the ring.',
+          primaryButtonText: 'Enter Home',
+        },
+        {
+          id: 'no_hr_eda_down',
+          label: 'EDA↓',
+          phases: ['3phase'],
+          signal: { edaQuality: 'declining', hrQuality: 'flat' },
+          title: 'No HR rhythm · EDA dipped',
+          body: 'Heart rate did not follow the breathing pace — likely the training was not done correctly. EDA dipped slightly during Stroop; that can be normal in a short session. Similar training will appear in the app — next time, please follow the guide. Keep wearing the ring.',
+          primaryButtonText: 'Enter Home',
+        },
+      ],
     },
   ];
+
+  return tabs.map((tab) => ({
+    ...tab,
+    variants: tab.variants.filter((v) => v.phases.includes(phase)),
+  }));
 }
 
 export function getActiveVariant(
