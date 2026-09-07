@@ -1,146 +1,142 @@
-import { CalibrationState, PhaseMode, SignalProfile } from '../types';
+import { SignalQuality } from '../types';
 
-/**
- * Result cases (Stroop版):
- *
- * HR rhythm OK:
- *   - EDA↑ + HR rhythm
- *   - EDA flat + HR rhythm
- *   - EDA↓ + HR rhythm
- *
- * Wearing / fit issue:
- *   - EDA & HR both flat, or both noisy
- *
- * No HR rhythm (breathing not followed):
- *   - EDA↑ / flat / ↓ each with its own explanation
- */
-export type ResultTabId = 'hr_rhythm' | 'wearing' | 'no_hr_rhythm';
+export type SignalOutcome = 'improved' | 'unchanged' | 'worse';
 
-export interface ResultVariant {
-  id: string;
+export interface SignalCase {
+  id: SignalOutcome;
   label: string;
-  phases: PhaseMode[];
-  signal: SignalProfile;
-  title: string;
-  body: string;
-  primaryButtonText: string;
+  quality: SignalQuality;
+  caption: string;
 }
 
-export interface ResultTabConfig {
-  id: ResultTabId;
-  label: string;
-  state: CalibrationState;
-  variants: ResultVariant[];
+export const SIGNAL_OUTCOMES: { id: SignalOutcome; label: string }[] = [
+  { id: 'improved', label: 'Improved' },
+  { id: 'unchanged', label: 'No change' },
+  { id: 'worse', label: 'Worse' },
+];
+
+export type StoryTone = 'settled' | 'mixed' | 'unsettled';
+
+export interface ResultStory {
+  tone: StoryTone;
+  summary: string;
 }
 
-export function getResultTabs(phase: PhaseMode): ResultTabConfig[] {
-  const tabs: ResultTabConfig[] = [
-    {
-      id: 'hr_rhythm',
-      label: 'HR rhythm',
-      state: 'positive',
-      variants: [
-        {
-          id: 'hr_ok_eda_rise',
-          label: 'EDA↑',
-          phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'rising', hrQuality: 'normal' },
-          title: 'Both signals clear',
-          body: 'EDA rose during Stroop — mental effort often does that. Heart rate followed the breathing pace. Keep wearing the ring so it keeps learning.',
-          primaryButtonText: 'Enter Home',
-        },
-        {
-          id: 'hr_ok_eda_flat',
-          label: 'EDA flat',
-          phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'flat', hrQuality: 'normal' },
-          title: 'HR clear · EDA flat',
-          body: 'Heart rate followed the breathing pace. EDA stayed flat during Stroop — that is common; it changes slowly and varies by person. Keep wearing the ring.',
-          primaryButtonText: 'Enter Home',
-        },
-        {
-          id: 'hr_ok_eda_down',
-          label: 'EDA↓',
-          phases: ['3phase'],
-          signal: { edaQuality: 'declining', hrQuality: 'normal' },
-          title: 'HR clear · EDA dipped',
-          body: 'Heart rate followed the breathing pace. EDA dipped slightly during Stroop — bodies respond differently in a short session. Keep wearing the ring.',
-          primaryButtonText: 'Enter Home',
-        },
-      ],
-    },
-    {
-      id: 'wearing',
-      label: 'Wearing',
-      state: 'negative',
-      variants: [
-        {
-          id: 'wear_flat_both',
-          label: 'Both flat',
-          phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'flat', hrQuality: 'flat' },
-          title: 'Flat signals — check fit',
-          body: 'No clear EDA or HR pattern. The ring may have been loose, you may have moved too much, or the session was too short. Wear it snugly day to day — readings improve over time.',
-          primaryButtonText: 'Enter Home',
-        },
-        {
-          id: 'wear_noisy',
-          label: 'Noisy',
-          phases: ['3phase', '2phase'],
-          signal: { edaQuality: 'abnormal', hrQuality: 'abnormal' },
-          title: 'Noisy signals — check fit',
-          body: 'EDA and HR were too noisy to read — often from movement, a loose fit, or the environment. This is about wearing, not your body. Keep wearing it snugly.',
-          primaryButtonText: 'Enter Home',
-        },
-      ],
-    },
-    {
-      id: 'no_hr_rhythm',
-      label: 'No HR rhythm',
-      state: 'neutral',
-      variants: [
-        {
-          id: 'no_hr_eda_rise',
-          label: 'EDA↑',
-          phases: ['3phase'],
-          signal: { edaQuality: 'rising', hrQuality: 'flat' },
-          title: 'EDA rose · no HR rhythm',
-          body: 'EDA rose during Stroop — we caught that change. Heart rate did not follow the breathing pace, likely because the training was not done correctly. Similar training will appear in the app — next time, please follow the guide. Keep wearing the ring.',
-          primaryButtonText: 'Enter Home',
-        },
-        {
-          id: 'no_hr_eda_flat',
-          label: 'EDA flat',
-          phases: ['3phase'],
-          signal: { edaQuality: 'flat', hrQuality: 'flat' },
-          title: 'No HR rhythm · EDA flat',
-          body: 'Heart rate did not follow the breathing pace — usually the training was not done correctly. EDA stayed flat during Stroop; that varies by person. Similar training will appear in the app — next time, please follow the guide. Keep wearing the ring.',
-          primaryButtonText: 'Enter Home',
-        },
-        {
-          id: 'no_hr_eda_down',
-          label: 'EDA↓',
-          phases: ['3phase'],
-          signal: { edaQuality: 'declining', hrQuality: 'flat' },
-          title: 'No HR rhythm · EDA dipped',
-          body: 'Heart rate did not follow the breathing pace — likely the training was not done correctly. EDA dipped slightly during Stroop; that can be normal in a short session. Similar training will appear in the app — next time, please follow the guide. Keep wearing the ring.',
-          primaryButtonText: 'Enter Home',
-        },
-      ],
-    },
-  ];
+export function getResultStory(eda: SignalOutcome, hr: SignalOutcome): ResultStory {
+  if (eda === 'improved' && hr === 'improved') {
+    return {
+      tone: 'settled',
+      summary:
+        'The color challenge raised your EDA. After breathing training, both signals improved: EDA declined and HR became steadier.',
+    };
+  }
 
-  return tabs.map((tab) => ({
-    ...tab,
-    variants: tab.variants.filter((v) => v.phases.includes(phase)),
-  }));
+  if (eda === 'improved' && hr === 'unchanged') {
+    return {
+      tone: 'mixed',
+      summary:
+        'The color challenge raised your EDA. Breathing training brought EDA down, but HR did not become steadier — the breathing guide may not have been followed closely.',
+    };
+  }
+
+  if (eda === 'improved' && hr === 'worse') {
+    return {
+      tone: 'mixed',
+      summary:
+        'The color challenge raised your EDA. Breathing training brought EDA down, but HR stayed uneven — the breathing guide may not have been followed closely.',
+    };
+  }
+
+  if (eda === 'unchanged' && hr === 'improved') {
+    return {
+      tone: 'mixed',
+      summary:
+        'The color challenge raised your EDA. Activation was not eased, while HR became steadier. Further wear and training can help this signal recover.',
+    };
+  }
+
+  if (eda === 'unchanged' && hr === 'unchanged') {
+    return {
+      tone: 'unsettled',
+      summary:
+        'The color challenge raised your EDA. Activation was not eased, and HR did not become steadier. Keep wearing the ring — later training will help recover these signals.',
+    };
+  }
+
+  if (eda === 'unchanged' && hr === 'worse') {
+    return {
+      tone: 'unsettled',
+      summary:
+        'The color challenge raised your EDA. Activation was not eased, and HR stayed uneven. Keep wearing the ring; later sessions will guide the breathing more closely.',
+    };
+  }
+
+  if (eda === 'worse' && hr === 'improved') {
+    return {
+      tone: 'mixed',
+      summary:
+        'The color challenge raised your EDA. Activation was not eased and continued to rise, while HR became steadier. Further wear and training can help this signal recover.',
+    };
+  }
+
+  if (eda === 'worse' && hr === 'unchanged') {
+    return {
+      tone: 'unsettled',
+      summary:
+        'The color challenge raised your EDA. Activation was not eased, and HR did not become steadier. Keep wearing the ring — later training will help recover these signals.',
+    };
+  }
+
+  return {
+    tone: 'unsettled',
+    summary:
+      'The color challenge raised your EDA. Activation was not eased, and HR stayed uneven. Keep wearing the ring; later sessions will guide the breathing more closely.',
+  };
 }
 
-export function getActiveVariant(
-  tabs: ResultTabConfig[],
-  tabId: ResultTabId,
-  variantId: string
-): ResultVariant {
-  const tab = tabs.find((t) => t.id === tabId) ?? tabs[0];
-  return tab.variants.find((v) => v.id === variantId) ?? tab.variants[0];
-}
+export const EDA_CASES: Record<SignalOutcome, SignalCase> = {
+  improved: {
+    id: 'improved',
+    label: 'Improved',
+    quality: 'normal',
+    caption:
+      'The color challenge made your body more activated. Breathing training then eased this signal.',
+  },
+  unchanged: {
+    id: 'unchanged',
+    label: 'No change',
+    quality: 'plateau',
+    caption:
+      'The color challenge made your body more activated, and this activation was not eased. Keep wearing the ring — more training can help recover this signal.',
+  },
+  worse: {
+    id: 'worse',
+    label: 'Worse',
+    quality: 'rising',
+    caption:
+      'The color challenge made your body more activated, and this activation was not eased. Keep wearing the ring — more training can help recover this signal.',
+  },
+};
+
+export const HR_CASES: Record<SignalOutcome, SignalCase> = {
+  improved: {
+    id: 'improved',
+    label: 'Improved',
+    quality: 'normal',
+    caption: 'Breathing training helped your heartbeat settle into a steadier rhythm.',
+  },
+  unchanged: {
+    id: 'unchanged',
+    label: 'No change',
+    quality: 'flat',
+    caption:
+      'This may be because the breathing guide was not followed fully. Keep wearing the ring and you can try again in the future.',
+  },
+  worse: {
+    id: 'worse',
+    label: 'Worse',
+    quality: 'abnormal',
+    caption:
+      'This may be because the breathing guide was not followed fully. Keep wearing the ring and you can try again in the future.',
+  },
+};

@@ -9,7 +9,8 @@ import { InviteStep } from './components/flow/InviteStep';
 import { RestStep } from './components/flow/RestStep';
 import { StroopStep } from './components/flow/StroopStep';
 import { CoherenceStep } from './components/flow/CoherenceStep';
-import { FlowResultsStep } from './components/flow/FlowResultsStep';
+import { FlowResultsStep, ResultOutcomePanel } from './components/flow/FlowResultsStep';
+import { SignalOutcome } from './flow/resultTabs';
 import { HomeStep } from './components/flow/HomeStep';
 
 const STEP_TITLES: Record<FlowStepId, string> = {
@@ -30,6 +31,9 @@ export default function App() {
   const [skippedSteps, setSkippedSteps] = useState<FlowStepId[]>([]);
   const [hadStroop, setHadStroop] = useState(false);
   const [skippedFlow, setSkippedFlow] = useState(false);
+  const [abandonedMidFlow, setAbandonedMidFlow] = useState(false);
+  const [edaOutcome, setEdaOutcome] = useState<SignalOutcome>('improved');
+  const [hrOutcome, setHrOutcome] = useState<SignalOutcome>('improved');
   const [flowKey, setFlowKey] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -51,6 +55,7 @@ export default function App() {
     setSkippedFlow(ctx.skippedFlow);
     setSkippedSteps(ctx.skippedSteps);
     setCompletedSteps(ctx.completedSteps);
+    setAbandonedMidFlow(false);
     bumpFlow();
   };
 
@@ -128,6 +133,7 @@ export default function App() {
 
   const handleStartFirstLoop = () => {
     setSkippedFlow(false);
+    setAbandonedMidFlow(false);
     setActivePath(null);
     setHadStroop(false);
     setCompletedSteps(['register', 'connect']);
@@ -135,6 +141,25 @@ export default function App() {
     setCurrentStep('invite');
     bumpFlow();
     showToast('First Loop invite');
+  };
+
+  const handleRemeasure = () => {
+    setSkippedFlow(false);
+    setAbandonedMidFlow(false);
+    setActivePath(null);
+    setHadStroop(false);
+    setCompletedSteps(['register', 'connect', 'invite']);
+    setSkippedSteps([]);
+    setCurrentStep('rest');
+    bumpFlow();
+    showToast('Starting rest baseline');
+  };
+
+  const handleAbandon = () => {
+    const inMeasure = ['rest', 'stroop', 'coherence', 'results'].includes(currentStep);
+    applyContext(getDemoContextForStep('invite_skip'));
+    setAbandonedMidFlow(inMeasure);
+    showToast('Going to Home');
   };
 
   const handleReset = () => {
@@ -166,6 +191,8 @@ export default function App() {
             key={`res-${flowKey}`}
             hadStroop={hadStroop}
             onContinue={handleResultsContinue}
+            edaOutcome={edaOutcome}
+            hrOutcome={hrOutcome}
           />
         );
       case 'home':
@@ -173,7 +200,9 @@ export default function App() {
           <HomeStep
             skippedFlow={skippedFlow}
             completedFlow={!skippedFlow && completedSteps.includes('results')}
+            abandonedMidFlow={abandonedMidFlow}
             onStartFirstLoop={handleStartFirstLoop}
+            onRemeasure={handleRemeasure}
           />
         );
       default:
@@ -225,10 +254,24 @@ export default function App() {
           />
         </aside>
 
-        <main className="lg:col-span-7 xl:col-span-8 bg-[#eef2f7] flex items-center justify-center p-6 overflow-y-auto min-h-[600px]">
-          <FlowDemoFrame title={STEP_TITLES[currentStep]} showBack={showBack} onBack={handleBack}>
+        <main className="lg:col-span-7 xl:col-span-8 bg-[#eef2f7] flex items-center justify-center gap-6 p-6 overflow-y-auto min-h-[600px]">
+          <FlowDemoFrame
+            title={STEP_TITLES[currentStep]}
+            showBack={showBack}
+            onBack={handleBack}
+            showQuit={currentStep !== 'home'}
+            onQuit={handleAbandon}
+          >
             {renderStep()}
           </FlowDemoFrame>
+          {currentStep === 'results' && (
+            <ResultOutcomePanel
+              edaOutcome={edaOutcome}
+              hrOutcome={hrOutcome}
+              onEdaChange={setEdaOutcome}
+              onHrChange={setHrOutcome}
+            />
+          )}
         </main>
       </div>
     </div>

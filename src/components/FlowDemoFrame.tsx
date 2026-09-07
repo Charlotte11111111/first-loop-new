@@ -6,6 +6,8 @@ interface FlowDemoFrameProps {
   children: React.ReactNode;
   showBack?: boolean;
   onBack?: () => void;
+  showQuit?: boolean;
+  onQuit?: () => void;
 }
 
 export const FlowDemoFrame: React.FC<FlowDemoFrameProps> = ({
@@ -13,8 +15,11 @@ export const FlowDemoFrame: React.FC<FlowDemoFrameProps> = ({
   children,
   showBack = false,
   onBack,
+  showQuit = false,
+  onQuit,
 }) => {
   const [timeStr, setTimeStr] = useState('19:53');
+  const [confirmQuit, setConfirmQuit] = useState(false);
 
   useEffect(() => {
     const tick = () => {
@@ -25,6 +30,10 @@ export const FlowDemoFrame: React.FC<FlowDemoFrameProps> = ({
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    setConfirmQuit(false);
+  }, [title]);
 
   return (
     <div className="relative mx-auto select-none" style={{ width: '375px', height: '812px' }}>
@@ -47,10 +56,49 @@ export const FlowDemoFrame: React.FC<FlowDemoFrameProps> = ({
               <div className="w-5" />
             )}
             <span className="text-sm font-semibold text-slate-800">{title}</span>
-            <MoreHorizontal className="w-5 h-5 text-slate-400" />
+            {showQuit ? (
+              <button
+                type="button"
+                onClick={() => setConfirmQuit(true)}
+                className="text-[11px] font-medium text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                Quit
+              </button>
+            ) : (
+              <MoreHorizontal className="w-5 h-5 text-slate-400" />
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar">{children}</div>
+
+          {confirmQuit && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center px-6 bg-slate-900/40">
+              <div className="w-full rounded-2xl bg-white p-5 shadow-xl">
+                <p className="text-[14px] font-semibold text-slate-900 leading-snug">
+                  You’ve already started the First Loop test experience. Do you want to quit?
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmQuit(false)}
+                    className="py-2.5 rounded-xl border border-slate-200 bg-white text-[12px] font-semibold text-slate-700 cursor-pointer active:scale-[0.98]"
+                  >
+                    Continue test
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmQuit(false);
+                      onQuit?.();
+                    }}
+                    className="py-2.5 rounded-xl bg-slate-900 text-[12px] font-semibold text-white cursor-pointer active:scale-[0.98]"
+                  >
+                    Go to Home
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-32 h-1 bg-slate-950 rounded-full opacity-70 z-30" />
         </div>

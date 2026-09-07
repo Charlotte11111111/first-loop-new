@@ -26,7 +26,7 @@ export const FLOW_NODES: FlowNode[] = [
   { id: 'invite', label: 'First Loop invite', shortLabel: 'Invite', paths: ['A', 'B', 'C'] },
   { id: 'rest', label: 'Rest baseline', shortLabel: 'Rest 30s', duration: '30s', paths: ['A', 'B'] },
   { id: 'stroop', label: 'Stroop reaction challenge', shortLabel: 'Stroop', duration: '50s', paths: ['A'] },
-  { id: 'coherence', label: 'Coherence breathing training', shortLabel: 'Breathing', duration: '30s', paths: ['A'] },
+  { id: 'coherence', label: 'Coherence breathing training', shortLabel: 'Breathing', duration: '5 min', paths: ['A'] },
   { id: 'results', label: 'EDA change + HR rhythm', shortLabel: 'Results', paths: ['A'] },
   { id: 'home', label: 'Go to Home', shortLabel: 'Home', paths: ['A', 'B', 'C'] },
 ];
@@ -38,8 +38,8 @@ export const PATH_META: Record<
   A: {
     title: 'Path A',
     subtitle: 'Full Detect → Act → Confirm',
-    duration: '~4 min',
-    description: 'Rest → Stroop (EDA) → breathing (HR rhythm) → results',
+    duration: '~7 min',
+    description: 'Rest → Stroop (EDA) → 5 min breathing (HR rhythm) → results',
   },
   B: {
     title: 'Path B',

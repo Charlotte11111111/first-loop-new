@@ -24,29 +24,6 @@ type NodeDef = {
 
 const NODE_H = 36;
 
-const DESIGN_NOTES = [
-  {
-    n: '01',
-    title: '移除情绪波动询问，Rest 后默认进入 Stroop',
-    body: '不再让用户主观判断「是否有情绪波动」。客观检测流程中插入自评，容易让用户质疑设备为何依赖感受而非信号本身。',
-  },
-  {
-    n: '02',
-    title: '结果页仅展示 Stroop 段 EDA 与 Coherence 段 HR',
-    body: '保守呈现更可能出现、也更易解释的变化：EDA 看挑战阶段，HR 看呼吸阶段。避免展示短窗内难以确认的结论。',
-  },
-  {
-    n: '03',
-    title: '完成体验后不可重试；仅 Skip 用户可从 Home 再进入',
-    body: '结果页不提供「再试一次」。若体验不佳却反复重试仍无改善，容易削弱用户对设备的信任。Skip First Loop 的用户可在 Home 通过入口再次体验。',
-  },
-  {
-    n: '04',
-    title: 'Result 已闭环；Home 不展示本次训练的延迟响应点',
-    body: '训练结束即完成 Detect → Act → Confirm 闭环。首个后台检测时间节点尚未到达，延迟 EDA 等数据此时未必能写入存储，因此 Home 不展示本次训练对应的延迟响应点，避免空态或误导。',
-  },
-];
-
 const NODES: NodeDef[] = [
   { id: 'register', x: 210, y: 32, w: 110, label: 'Register' },
   { id: 'connect', x: 210, y: 100, w: 110, label: 'Connect' },
@@ -57,7 +34,7 @@ const NODES: NodeDef[] = [
 
   { id: 'rest', x: 286, y: 244, w: 92, label: 'Rest' },
   { id: 'stroop', x: 286, y: 326, w: 92, label: 'Stroop', branch: 'A' },
-  { id: 'coherence', x: 286, y: 408, w: 96, label: 'Breathing', branch: 'A' },
+  { id: 'coherence', x: 286, y: 408, w: 96, label: 'Breathing', sub: '5 min', branch: 'A' },
   { id: 'results', x: 286, y: 490, w: 96, label: 'Results', sub: 'EDA + HR', branch: 'A' },
   { id: 'home', x: 286, y: 572, w: 96, label: 'Home', branch: 'A' },
 ];
@@ -204,7 +181,7 @@ export const FlowChart: React.FC<FlowChartProps> = ({
           viewBox="0 0 400 630"
           preserveAspectRatio="xMidYMid meet"
           className="w-full"
-          style={{ minHeight: 420, maxHeight: '52vh' }}
+          style={{ minHeight: 520, maxHeight: '78vh' }}
         >
           {/* Onboarding spine */}
           {line(reg.x, bottom(reg), con.x, top(con))}
@@ -240,27 +217,6 @@ export const FlowChart: React.FC<FlowChartProps> = ({
         </svg>
       </div>
 
-      <div className="shrink-0 pb-1 space-y-2">
-        <p className="text-[10px] font-semibold tracking-[0.06em] text-slate-400 uppercase px-0.5">
-          设计说明
-        </p>
-        {DESIGN_NOTES.map((note) => (
-          <div
-            key={note.n}
-            className="rounded-xl border border-slate-100 bg-white px-3.5 py-3 shadow-sm"
-          >
-            <div className="flex gap-2.5">
-              <span className="text-[10px] font-bold text-blue-600 tabular-nums shrink-0 pt-0.5">
-                {note.n}
-              </span>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-800 leading-snug">{note.title}</p>
-                <p className="text-[10px] text-slate-500 leading-relaxed mt-1.5">{note.body}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 };

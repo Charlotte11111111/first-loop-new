@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { DataPoint, SignalQuality } from '../types';
+import { REST_END, STROOP_END, BREATH_END } from '../utils';
 
 interface CalibrationChartProps {
   type: 'eda' | 'hr';
@@ -12,64 +13,66 @@ interface CalibrationChartProps {
 
 type ChartPoint = { time: number; value: number; sourceTime: number };
 
-/**
- * EDA: Rest + Stroop only (source 0–75s)
- * HR: Rest + Coherence only (source Rest 0–30 + Coherence 75–120, remapped)
- */
-function buildChartPoints(type: 'eda' | 'hr', data: DataPoint[]): {
-  points: ChartPoint[];
-  maxTime: number;
-  phases: { start: number; end: number; label: string; fill: string; text: string }[];
-} {
-  if (type === 'eda') {
-    const points = data
-      .filter((d) => d.time <= 75)
-      .map((d) => ({ time: d.time, value: d.eda, sourceTime: d.time }));
-    return {
-      points,
-      maxTime: 75,
-      phases: [
-        { start: 0, end: 30, label: 'Rest 0-30s', fill: '#e0f2fe', text: 'fill-sky-600/90' },
-        { start: 30, end: 75, label: 'Stroop 30-75s', fill: '#fee2e2', text: 'fill-rose-600/90' },
-      ],
-    };
-  }
+const PHASES = [
+  { start: 0, end: REST_END, label: 'Rest', duration: '30s', fill: '#e0f2fe', text: '#0284c7', weight: 1 },
+  { start: REST_END, end: STROOP_END, label: 'Stroop', duration: '50s', fill: '#ffe4e6', text: '#e11d48', weight: 1.1 },
+  { start: STROOP_END, end: BREATH_END, label: 'Breathing', duration: '5 min', fill: '#dcfce7', text: '#059669', weight: 1.5 },
+];
 
-  // HR: Rest then Coherence, no Stroop gap on the chart
-  const rest = data
-    .filter((d) => d.time <= 30)
-    .map((d) => ({ time: d.time, value: d.hr, sourceTime: d.time }));
-  const coherence = data
-    .filter((d) => d.time >= 75)
-    .map((d) => ({ time: 30 + (d.time - 75), value: d.hr, sourceTime: d.time }));
-  return {
-    points: [...rest, ...coherence],
-    maxTime: 75,
-    phases: [
-      { start: 0, end: 30, label: 'Rest 0-30s', fill: '#e0f2fe', text: 'fill-sky-600/90' },
-      { start: 30, end: 75, label: 'Coherence 30-75s', fill: '#dcfce7', text: 'fill-emerald-600/90' },
-    ],
-  };
+const PHASE_WEIGHT_TOTAL = PHASES.reduce((sum, p) => sum + p.weight, 0);
+
+function timeToRatio(t: number) {
+  let acc = 0;
+  for (const phase of PHASES) {
+    const span = phase.end - phase.start;
+    const share = phase.weight / PHASE_WEIGHT_TOTAL;
+    if (t <= phase.end) {
+      const local = Math.max(0, t - phase.start) / span;
+      return acc + local * share;
+    }
+    acc += share;
+  }
+  return 1;
+}
+
+function ratioToTime(ratio: number) {
+  const clamped = Math.max(0, Math.min(1, ratio));
+  let acc = 0;
+  for (const phase of PHASES) {
+    const share = phase.weight / PHASE_WEIGHT_TOTAL;
+    if (clamped <= acc + share) {
+      const local = share === 0 ? 0 : (clamped - acc) / share;
+      return phase.start + local * (phase.end - phase.start);
+    }
+    acc += share;
+  }
+  return BREATH_END;
+}
+
+function buildChartPoints(type: 'eda' | 'hr', data: DataPoint[]): ChartPoint[] {
+  return data.map((d) => ({
+    time: d.time,
+    value: type === 'eda' ? d.eda : d.hr,
+    sourceTime: d.time,
+  }));
 }
 
 export const CalibrationChart: React.FC<CalibrationChartProps> = ({
   type,
   data,
-  quality,
   hoveredTime,
   setHoveredTime,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 315, height: 110 });
+  const [dimensions, setDimensions] = useState({ width: 315, height: 150 });
 
   React.useEffect(() => {
     if (!containerRef.current) return;
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { width } = entry.contentRect;
         setDimensions({
-          width: width || 315,
-          height: 110,
+          width: entry.contentRect.width || 315,
+          height: 150,
         });
       }
     });
@@ -78,35 +81,34 @@ export const CalibrationChart: React.FC<CalibrationChartProps> = ({
   }, []);
 
   const { width, height } = dimensions;
-  const { points, maxTime, phases } = buildChartPoints(type, data);
+  const points = buildChartPoints(type, data);
 
-  const paddingLeft = 32;
-  const paddingRight = 12;
-  const paddingTop = 14;
-  const paddingBottom = 18;
+  const paddingLeft = 4;
+  const paddingRight = 4;
+  const paddingTop = 22;
+  const paddingBottom = 4;
 
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
 
-  const minEda = 0;
-  const maxEda = 10;
-  const minHr = 40;
-  const maxHr = 130;
+  const minEda = 1.4;
+  const maxEda = 9.6;
+  const minHr = 58;
+  const maxHr = 108;
 
-  const getX = (t: number) => paddingLeft + (t / maxTime) * chartWidth;
+  const getX = (t: number) => paddingLeft + timeToRatio(t) * chartWidth;
 
   const getY = (val: number) => {
     if (type === 'eda') {
       const clamped = Math.max(minEda, Math.min(maxEda, val));
-      return paddingTop + chartHeight - (clamped / maxEda) * chartHeight;
+      return paddingTop + chartHeight - ((clamped - minEda) / (maxEda - minEda)) * chartHeight;
     }
     const clamped = Math.max(minHr, Math.min(maxHr, val));
-    const range = maxHr - minHr;
-    return paddingTop + chartHeight - ((clamped - minHr) / range) * chartHeight;
+    return paddingTop + chartHeight - ((clamped - minHr) / (maxHr - minHr)) * chartHeight;
   };
 
   const findPointForSourceTime = (sourceTime: number | null): ChartPoint => {
-    if (sourceTime == null) return points[points.length - 1];
+    if (sourceTime == null || points.length === 0) return points[points.length - 1];
     let best = points[0];
     let bestDist = Infinity;
     for (const p of points) {
@@ -120,235 +122,129 @@ export const CalibrationChart: React.FC<CalibrationChartProps> = ({
   };
 
   const activePoint = findPointForSourceTime(hoveredTime);
-  const activeValue = activePoint.value;
-  const unit = type === 'eda' ? 'μS' : 'bpm';
-  const label = type === 'eda' ? 'Electrodermal Activity (EDA)' : 'Heart Rate (HR)';
-  const colorClass = type === 'eda' ? 'text-blue-600 font-semibold' : 'text-emerald-600 font-semibold';
+  const stroke = type === 'eda' ? '#2563eb' : '#059669';
+  const fillId = type === 'eda' ? 'edaFill' : 'hrFill';
 
-  let pathD = '';
+  let lineD = '';
   if (points.length > 0) {
-    pathD = `M ${getX(points[0].time)} ${getY(points[0].value)}`;
+    lineD = `M ${getX(points[0].time)} ${getY(points[0].value)}`;
     for (let i = 1; i < points.length; i++) {
-      pathD += ` L ${getX(points[i].time)} ${getY(points[i].value)}`;
+      lineD += ` L ${getX(points[i].time)} ${getY(points[i].value)}`;
     }
   }
 
-  const chartTimeToSource = (chartTime: number): number => {
-    if (type === 'eda') return chartTime;
-    if (chartTime <= 30) return chartTime;
-    return 75 + (chartTime - 30);
-  };
+  const areaD = lineD
+    ? `${lineD} L ${getX(points[points.length - 1].time)} ${paddingTop + chartHeight} L ${getX(points[0].time)} ${paddingTop + chartHeight} Z`
+    : '';
 
   const handlePointer = (clientX: number, currentTarget: SVGSVGElement) => {
     const rect = currentTarget.getBoundingClientRect();
     const relativeX = clientX - rect.left - paddingLeft;
     const ratio = Math.max(0, Math.min(1, relativeX / chartWidth));
-    const chartTime = Math.round(ratio * maxTime);
-    setHoveredTime(chartTimeToSource(chartTime));
+    setHoveredTime(Math.round(ratioToTime(ratio)));
   };
-
-  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    handlePointer(e.clientX, e.currentTarget);
-  };
-
-  const handleMouseLeave = () => setHoveredTime(null);
-
-  const handleTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
-    if (e.touches.length === 0) return;
-    handlePointer(e.touches[0].clientX, e.currentTarget);
-  };
-
-  const cardBorderClass =
-    quality === 'abnormal'
-      ? 'border border-amber-300 shadow-[0_2px_12px_rgba(217,119,6,0.08)] bg-amber-50/10'
-      : quality === 'rising'
-        ? 'border border-rose-200 shadow-[0_2px_12px_rgba(244,63,94,0.06)] bg-rose-50/10'
-        : quality === 'plateau'
-          ? 'border border-sky-200 shadow-[0_2px_12px_rgba(14,165,233,0.05)] bg-sky-50/10'
-          : 'border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.03)] bg-white';
-
-  const axisTicks = [0, 30, 75];
 
   return (
-    <div
-      ref={containerRef}
-      className={`p-3 rounded-2xl transition-all duration-300 ${cardBorderClass}`}
-    >
-      <div className="flex items-baseline justify-between mb-1 px-1">
-        <span className="text-[12px] font-medium text-slate-500 tracking-wide">{label}</span>
-        <div className="flex items-baseline space-x-1">
-          <span className={`text-lg font-mono tracking-tight font-bold ${colorClass}`}>
-            {activeValue.toFixed(type === 'eda' ? 2 : 1)}
-          </span>
-          <span className="text-[10px] text-slate-400 font-mono font-medium">{unit}</span>
-        </div>
-      </div>
+    <div ref={containerRef} className="relative select-none">
+      <svg
+        width="100%"
+        height={height}
+        className="overflow-visible cursor-crosshair touch-none"
+        onMouseMove={(e) => handlePointer(e.clientX, e.currentTarget)}
+        onMouseLeave={() => setHoveredTime(null)}
+        onTouchMove={(e) => {
+          if (e.touches[0]) handlePointer(e.touches[0].clientX, e.currentTarget);
+        }}
+        onTouchEnd={() => setHoveredTime(null)}
+      >
+        <defs>
+          <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0.01" />
+          </linearGradient>
+        </defs>
 
-      <div className="relative select-none" style={{ height }}>
-        <svg
-          width="100%"
-          height={height}
-          className="overflow-visible cursor-crosshair touch-none"
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleMouseLeave}
-        >
-          {phases.map((phase) => (
-            <React.Fragment key={phase.label}>
-              <rect
-                x={getX(phase.start)}
-                y={paddingTop}
-                width={getX(phase.end) - getX(phase.start)}
-                height={chartHeight}
-                fill={phase.fill}
-                fillOpacity="0.45"
-                rx="2"
-              />
-              <text
-                x={getX(phase.start) + (getX(phase.end) - getX(phase.start)) / 2}
-                y={paddingTop + 11}
-                textAnchor="middle"
-                className={`text-[9px] font-medium ${phase.text} pointer-events-none`}
-              >
-                {phase.label}
-              </text>
-            </React.Fragment>
-          ))}
+        {PHASES.map((phase) => (
+          <rect
+            key={phase.label}
+            x={getX(phase.start)}
+            y={paddingTop}
+            width={Math.max(0, getX(phase.end) - getX(phase.start))}
+            height={chartHeight}
+            fill={phase.fill}
+            fillOpacity="0.55"
+          />
+        ))}
 
-          {type === 'eda'
-            ? [2, 5, 8].map((val) => (
-                <g key={val} className="opacity-40">
-                  <line
-                    x1={paddingLeft}
-                    y1={getY(val)}
-                    x2={width - paddingRight}
-                    y2={getY(val)}
-                    stroke="#cbd5e1"
-                    strokeWidth="1"
-                    strokeDasharray="2 3"
-                  />
-                  <text
-                    x={paddingLeft - 6}
-                    y={getY(val) + 3}
-                    textAnchor="end"
-                    className="text-[8px] font-mono fill-slate-400 pointer-events-none"
-                  >
-                    {val}
-                  </text>
-                </g>
-              ))
-            : [60, 80, 100, 120].map((val) => (
-                <g key={val} className="opacity-40">
-                  <line
-                    x1={paddingLeft}
-                    y1={getY(val)}
-                    x2={width - paddingRight}
-                    y2={getY(val)}
-                    stroke="#cbd5e1"
-                    strokeWidth="1"
-                    strokeDasharray="2 3"
-                  />
-                  <text
-                    x={paddingLeft - 6}
-                    y={getY(val) + 3}
-                    textAnchor="end"
-                    className="text-[8px] font-mono fill-slate-400 pointer-events-none"
-                  >
-                    {val}
-                  </text>
-                </g>
-              ))}
-
+        {[REST_END, STROOP_END].map((t) => (
           <line
-            x1={getX(30)}
+            key={t}
+            x1={getX(t)}
             y1={paddingTop}
-            x2={getX(30)}
+            x2={getX(t)}
             y2={paddingTop + chartHeight}
             stroke="#94a3b8"
             strokeWidth="1"
-            strokeOpacity="0.4"
+            strokeOpacity="0.28"
+            strokeDasharray="3 3"
           />
+        ))}
 
-          <line
-            x1={paddingLeft}
-            y1={paddingTop + chartHeight}
-            x2={width - paddingRight}
-            y2={paddingTop + chartHeight}
-            stroke="#cbd5e1"
-            strokeWidth="1"
+        {areaD && <path d={areaD} fill={`url(#${fillId})`} />}
+        {lineD && (
+          <path
+            d={lineD}
+            fill="none"
+            stroke={stroke}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
+        )}
 
-          {axisTicks.map((t) => (
-            <text
-              key={t}
-              x={getX(t)}
-              y={paddingTop + chartHeight + 11}
-              textAnchor={t === 0 ? 'start' : t === maxTime ? 'end' : 'middle'}
-              className="text-[8px] font-mono fill-slate-400 pointer-events-none font-medium"
-            >
-              {t}s
-            </text>
-          ))}
-
-          {pathD && (
-            <path
-              d={pathD}
-              fill="none"
-              stroke={type === 'eda' ? '#2563eb' : '#059669'}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="transition-all duration-75"
+        {hoveredTime !== null && activePoint && (
+          <>
+            <line
+              x1={getX(activePoint.time)}
+              y1={paddingTop}
+              x2={getX(activePoint.time)}
+              y2={paddingTop + chartHeight}
+              stroke="#64748b"
+              strokeWidth="1"
+              strokeDasharray="3 3"
+              className="pointer-events-none"
             />
-          )}
+            <circle
+              cx={getX(activePoint.time)}
+              cy={getY(activePoint.value)}
+              r="4"
+              fill={stroke}
+              stroke="#ffffff"
+              strokeWidth="1.5"
+              className="pointer-events-none"
+            />
+          </>
+        )}
 
-          {hoveredTime !== null && (
-            <>
-              <line
-                x1={getX(activePoint.time)}
-                y1={paddingTop}
-                x2={getX(activePoint.time)}
-                y2={paddingTop + chartHeight}
-                stroke="#64748b"
-                strokeWidth="1.2"
-                strokeDasharray="3 3"
-                className="pointer-events-none"
-              />
-              <circle
-                cx={getX(activePoint.time)}
-                cy={getY(activeValue)}
-                r="4.5"
-                fill={type === 'eda' ? '#2563eb' : '#059669'}
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                className="pointer-events-none shadow-sm"
-              />
-            </>
-          )}
-        </svg>
-
-        {quality === 'abnormal' && (
-          <div className="absolute top-2 right-2 flex items-center space-x-1 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-700 text-[8px] font-semibold uppercase tracking-wide border border-amber-500/20 pointer-events-none animate-pulse">
-            <span>⚠ Signal interference</span>
-          </div>
-        )}
-        {quality === 'declining' && (
-          <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-700 text-[8px] font-semibold border border-violet-500/20 pointer-events-none">
-            ↓ Dip
-          </div>
-        )}
-        {quality === 'rising' && (
-          <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-700 text-[8px] font-semibold border border-rose-500/20 pointer-events-none">
-            ↑ Strong rise
-          </div>
-        )}
-        {quality === 'plateau' && (
-          <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-700 text-[8px] font-semibold border border-sky-500/20 pointer-events-none">
-            Mild change
-          </div>
-        )}
-      </div>
+        {PHASES.map((phase) => {
+          const w = getX(phase.end) - getX(phase.start);
+          if (w < 28) return null;
+          return (
+            <text
+              key={`${phase.label}-on`}
+              x={getX(phase.start) + w / 2}
+              y={paddingTop + 13}
+              textAnchor="middle"
+              fill={phase.text}
+              fontSize="10"
+              fontWeight="600"
+              className="pointer-events-none"
+            >
+              {phase.label}
+            </text>
+          );
+        })}
+      </svg>
     </div>
   );
 };
