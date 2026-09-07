@@ -97,12 +97,6 @@ export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({
     <div className="px-5 pt-6 pb-8">
       <div className={`rounded-2xl border px-4 py-4 ${HIGHLIGHT[story.tone]}`}>
         <p className="text-[15px] font-semibold text-slate-900 leading-snug">{story.summary}</p>
-        <p className="mt-3 text-[11px] italic text-slate-500/80 leading-relaxed">
-          EDA — how activated your body is.
-        </p>
-        <p className="mt-1 text-[11px] italic text-slate-500/80 leading-relaxed">
-          HR — whether your heartbeat follows your breath.
-        </p>
       </div>
 
       <section className="mt-5 rounded-2xl bg-white border border-slate-100 overflow-hidden">
@@ -118,7 +112,9 @@ export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({
         </div>
         <div className="px-4 pb-4 pt-2">
           <p className="text-[13px] text-slate-600 leading-relaxed">{edaCase.caption}</p>
-          <p className="mt-2 text-[11px] italic text-slate-400">EDA</p>
+          <p className="mt-2 text-[11px] italic text-slate-400">
+            EDA — how activated your body is.
+          </p>
         </div>
       </section>
 
@@ -135,7 +131,9 @@ export const FlowResultsStep: React.FC<FlowResultsStepProps> = ({
         </div>
         <div className="px-4 pb-4 pt-2">
           <p className="text-[13px] text-slate-600 leading-relaxed">{hrCase.caption}</p>
-          <p className="mt-2 text-[11px] italic text-slate-400">HR</p>
+          <p className="mt-2 text-[11px] italic text-slate-400">
+            HR — whether your heartbeat follows your breath.
+          </p>
         </div>
       </section>
 
